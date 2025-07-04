@@ -1,0 +1,58 @@
+include "registries/aaosa.hocon"
+
+llm_config {
+  model_name = "gpt-4o"
+}
+
+commondefs {
+  replacement_strings {
+    instructions_prefix = """
+You are part of an optimize_rate_of_penetration_in_exploration_in_oil_and_gas network of assistants.
+Only answer inquiries that are directly within your area of expertise.
+Do not try to help with other matters.
+Do not mention what you cannot do. Only mention what you can do.
+"""
+    demo_mode = "You are part of a demo system, so when queried, make up a realistic response as if you are grounded in real data or operating a real application API or microservice."
+  }
+}
+
+tools = [
+  {
+    name = wob_agent
+    function = ${aaosa_call}
+    instructions = "{{instructions_prefix}} {{demo_mode}}\nCompute Weight on Bit using well depth, mud weight, and pressure."
+    instructions += ${aaosa_instructions}
+    command = ${aaosa_command}
+    inputs = ["well_depth", "mud_weight", "pressure"]
+    outputs = ["computed_wob"]
+  },
+  {
+    name = rpm_agent
+    function = ${aaosa_call}
+    instructions = "{{instructions_prefix}} {{demo_mode}}\nCalculate Rotary Speed using temperature, pressure, and computed_wob."
+    instructions += ${aaosa_instructions}
+    command = ${aaosa_command}
+    inputs = ["temperature", "pressure", "computed_wob"]
+    outputs = ["computed_rpm"]
+  },
+  {
+    name = pump_agent
+    function = ${aaosa_call}
+    instructions = "{{instructions_prefix}} {{demo_mode}}\nCompute Pump Flow Rate using flow rate, temperature, and computed_rpm."
+    instructions += ${aaosa_instructions}
+    command = ${aaosa_command}
+    inputs = ["flow_rate", "temperature", "computed_rpm"]
+    outputs = ["computed_pump_flow"]
+  },
+  {
+    name = rop_optimizer
+    function {
+      description = "Combines computed parameters to produce optimized Rate of Penetration."
+    }
+    instructions = "{{instructions_prefix}}\nYou synthesize computed_wob, computed_rpm, and computed_pump_flow to produce the final optimized ROP."
+    instructions += ${aaosa_instructions}
+    inputs = ["computed_wob", "computed_rpm", "computed_pump_flow"]
+    outputs = ["rop"]
+    tools = ["wob_agent", "rpm_agent", "pump_agent"]
+  }
+]
